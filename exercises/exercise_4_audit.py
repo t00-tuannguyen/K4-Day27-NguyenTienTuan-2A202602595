@@ -33,6 +33,7 @@ import uuid
 
 from dotenv import load_dotenv
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from rich.console import Console
@@ -49,6 +50,12 @@ from common.schemas import (
     ReviewState,
     risk_level_for,
 )
+
+
+# Let the checkpointer restore our Pydantic models from msgpack without warnings.
+SERDE = JsonPlusSerializer(allowed_msgpack_modules=[
+    ("common.schemas", "PRAnalysis"), ("common.schemas", "ReviewComment"),
+])
 
 
 console = Console()
@@ -361,6 +368,7 @@ def build_graph(checkpointer):
     g.add_edge("commit", END)
     g.add_edge("escalate", "synthesize")
     g.add_edge("synthesize", "commit")
+    checkpointer.serde = SERDE
     return g.compile(checkpointer=checkpointer)
 
 

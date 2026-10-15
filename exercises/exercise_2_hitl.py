@@ -12,6 +12,7 @@ import uuid
 
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from rich.console import Console
@@ -25,6 +26,12 @@ from common.schemas import (
     PRAnalysis,
     ReviewState,
 )
+
+
+# Let the checkpointer restore our Pydantic models from msgpack without warnings.
+SERDE = JsonPlusSerializer(allowed_msgpack_modules=[
+    ("common.schemas", "PRAnalysis"), ("common.schemas", "ReviewComment"),
+])
 
 
 console = Console()
@@ -133,7 +140,7 @@ def build_graph():
     g.add_edge("human_approval", "commit")
     g.add_edge("commit", END)
     g.add_edge("escalate", END)
-    return g.compile(checkpointer=MemorySaver())
+    return g.compile(checkpointer=MemorySaver(serde=SERDE))
 
 
 def prompt_human(payload: dict) -> dict:
